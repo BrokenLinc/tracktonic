@@ -1,0 +1,91 @@
+<script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<script>
+$(function(){
+
+	var bpm;
+	var last_beat_time;
+	var dampen = 5;
+	var now_playing_bpm = 0;
+	var threshold = 12/13;
+	var next_song, now_song;
+	var last_song_selected_time;
+	var forgiveness = 7000;
+	var low_bpm_threshold = 50;
+
+	function game_loop() {
+		$('.js-bpm').text(bpm || '-');
+	}
+
+	setInterval(game_loop, 0);
+
+	$(document).on('keypress', function(){
+		if(next_song) {
+			$('.js-song').text(next_song + ' (' +songs[next_song]+ ')');
+			$('audio source').attr('src', next_song).detach().appendTo("audio");
+			now_song = next_song;
+			next_song = null;
+		}
+
+		var beat_time = new Date().getTime();
+		var seconds_elapsed = beat_time - last_beat_time;
+		var new_bpm = 60*1000/seconds_elapsed;
+
+		if(new_bpm>low_bpm_threshold) {
+			$('.js-bpm-instant').text(new_bpm);
+			//while(new_bpm > 120) new_bpm /= 2; //use only for lookups
+			if(bpm) bpm = (bpm*(dampen-1) + new_bpm)/dampen;
+			else bpm = new_bpm;
+
+			//console.log(Math.abs(bpm - now_playing_bpm));
+			if(!last_song_selected_time || (new Date().getTime() -last_song_selected_time > forgiveness)) {
+				var _diff = bpm/now_playing_bpm;
+				if(_diff < threshold || _diff > 1/threshold) select_song(bpm);
+			}
+		}
+
+		last_beat_time = beat_time;
+	});
+
+	function select_song(optimal_bpm) {
+		var search_bpm = optimal_bpm;
+		while(search_bpm > 120) search_bpm /= 2; //use only for lookups
+		var diff, song;
+		console.log('**********');
+		console.log(optimal_bpm);
+		console.log('**********');
+		for(var i in songs) {
+			var _diff = Math.abs(songs[i]-search_bpm);
+			console.log(i + ' : ' + _diff);
+			if(!diff || (_diff < diff)) {
+				diff = _diff;
+				song = i;
+			}
+		}
+		now_playing_bpm = optimal_bpm;
+		if(now_song != song) next_song = song;
+		last_song_selected_time = new Date().getTime();
+	}
+
+	var songs = {
+		'9. The Beatles - Everyday Chemistry - Days Like These.mp3' : 62,
+		'10. The Beatles - Everyday Chemistry - Saturday Night.mp3' : 62,
+		'5. The Beatles - Everyday Chemistry - Jenn.mp3' : 68,
+		'4. The Beatles - Everyday Chemistry - Sick To Death.mp3' : 69,
+		'6. The Beatles - Everyday Chemistry - Im Just Sitting Here.mp3' : 73,
+		'Black James Franco - Sun House - 04 Dollar Store Hoe.mp3' : 74,
+		'Black James Franco - Sun House - 02 Naked by Choice.mp3' : 79,
+		'Black James Franco - Sun House - 06 Cinquemani.mp3' : 79,
+		'Black James Franco - Sun House - 03 1 in 10,000.mp3' : 80,
+		'3. The Beatles - Everyday Chemistry - Anybody Else.mp3' : 92,
+		'2. The Beatles - Everyday Chemistry - Talking To Myself.mp3' : 96,
+		'11. The Beatles - Everyday Chemistry - Mr Gators Swamp Jamboree.mp3' : 96,
+		'7. The Beatles - Everyday Chemistry - Soldier Boy.mp3' : 103
+	};
+
+});
+</script>
+
+<h1>Instant BPM: <span class="js-bpm-instant">-</span></h1>
+<h1>Dampened BPM: <span class="js-bpm">-</span></h1>
+<h1>Song: <span class="js-song">-</span></h1>
+<audio autoplay controls><source type="audio/mpeg"></audio>
